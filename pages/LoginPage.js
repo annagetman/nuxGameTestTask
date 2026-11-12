@@ -19,11 +19,25 @@ export class LoginPage {
   }
 
   async clickLogin() {
-    const loginMenuItem = this.page.locator(
-      "ul.vector-menu-content-list li#pt-login-2 a",
+    const invalidReturnUrlToken = this.page.getByText(
+      "invalid returnUrlToken",
+      { exact: true },
     );
 
-    await loginMenuItem.click();
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await this.page.goto("/wiki/Special:UserLogin");
+
+      if (await invalidReturnUrlToken.isVisible()) {
+        continue;
+      }
+
+      await expect(this.usernameInput).toBeVisible({ timeout: 15000 });
+      return;
+    }
+
+    throw new Error(
+      "Wikipedia rejected the login redirect with invalid returnUrlToken after one retry.",
+    );
   }
 
   async login(username, password) {

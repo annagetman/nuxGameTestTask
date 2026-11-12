@@ -6,6 +6,7 @@ test.describe("Authentication", () => {
   test("TC001 - Login with valid credentials", async ({ page }) => {
     const loginPage = new LoginPage(page);
     const headerPage = new HeaderPage(page);
+
     const username = process.env.WIKI_USERNAME;
     const password = process.env.WIKI_PASSWORD;
 
@@ -13,13 +14,16 @@ test.describe("Authentication", () => {
     expect(password, "WIKI_PASSWORD is missing").toBeTruthy();
 
     await loginPage.open();
+
     await expect(page).toHaveURL(/Main_Page/);
     await expect(
-      page.getByRole("heading", { name: "Welcome to Wikipedia" })
+      page.getByRole("heading", { name: "Welcome to Wikipedia" }),
     ).toBeVisible();
+
     await loginPage.clickLogin();
     await loginPage.login(username, password);
+
     await expect(headerPage.loggedUserName).toHaveText(username);
     await expect(page).toHaveURL(/Main_Page/);
   });
-});
+})

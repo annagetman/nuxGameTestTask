@@ -4,7 +4,9 @@ import { HeaderPage } from "../pages/HeaderPage";
 import { PreferencesPage } from "../pages/PreferencesPage";
 
 test.describe("Wikipedia interface language", () => {
-  test("TC002 - Authenticated user can change interface language", async ({ page }) => {
+  test("TC002 - Authenticated user can change interface language", async ({
+    page,
+  }) => {
     const loginPage = new LoginPage(page);
     const headerPage = new HeaderPage(page);
     const preferencesPage = new PreferencesPage(page);
@@ -27,20 +29,18 @@ test.describe("Wikipedia interface language", () => {
     const currentLanguage = await preferencesPage.getCurrentLanguage();
 
     const targetLanguage = currentLanguage === "uk" ? "en" : "uk";
+
     const targetLanguageName =
       targetLanguage === "uk" ? "Українська" : "English";
 
     await preferencesPage.selectLanguage(targetLanguageName, targetLanguage);
+
     await preferencesPage.saveSettings();
-
     await preferencesPage.verifyLanguage(targetLanguage);
-    await expect(page.locator("html")).toHaveAttribute("lang", targetLanguage);
-
     await page.goto("/wiki/Main_Page");
+    await preferencesPage.verifyInterfaceLanguage(targetLanguage);
 
-    const expectedHeading =
-      targetLanguage === "uk" ? "Головна сторінка" : "Main Page";
-
-    await expect(page.locator("#firstHeading")).toHaveText(expectedHeading);
+    await headerPage.openPreferences();
+    await preferencesPage.verifyLanguage(targetLanguage);
   });
 });

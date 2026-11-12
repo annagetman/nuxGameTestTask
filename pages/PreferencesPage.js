@@ -43,4 +43,15 @@ export class PreferencesPage {
   async getCurrentLanguage() {
     return await this.languageSelect.inputValue();
   }
+  async verifyInterfaceLanguage(languageCode) {
+    const searchInput = this.page.locator("#searchInput");
+
+    const expectedPlaceholder =
+      languageCode === "uk" ? "Пошук у Wikipedia" : "Search Wikipedia";
+
+    await expect(searchInput).toHaveAttribute(
+      "placeholder",
+      expectedPlaceholder,
+    );
+  }
 }
