@@ -4,7 +4,7 @@ import { HeaderPage } from "../pages/HeaderPage";
 import { PreferencesPage } from "../pages/PreferencesPage";
 
 test.describe("Wikipedia interface language", () => {
-  test("Authenticated user can change interface language", async ({ page }) => {
+  test("TC002 - Authenticated user can change interface language", async ({ page }) => {
     const loginPage = new LoginPage(page);
     const headerPage = new HeaderPage(page);
     const preferencesPage = new PreferencesPage(page);

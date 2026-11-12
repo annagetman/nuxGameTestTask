@@ -1,19 +1,25 @@
-# Wikipedia Interface Language Automation
+# Wikipedia Playwright Automation
 
-A UI automation project for testing the interface language change functionality on Wikipedia using **Playwright** and **JavaScript**.
+Automated UI tests for Wikipedia using Playwright and JavaScript.
+
+The project covers user authentication and changing the Wikipedia interface language. Tests are executed locally or inside a Docker container. GitHub Actions is configured to run tests automatically and publish the HTML report as a workflow artifact.
 
 ## Tech Stack
 
-- JavaScript
+- JavaScript (Node.js)
 - Playwright
-- Node.js
 - Docker
+- Docker Compose
+- GitHub Actions
 - dotenv
 
 ## Project Structure
 
 ```text
 nuxGameTestTask/
+├── .github/
+│   └── workflows/
+│       └── playwright.yml
 ├── pages/
 │   ├── HeaderPage.js
 │   ├── LoginPage.js
@@ -21,81 +27,102 @@ nuxGameTestTask/
 ├── tests/
 │   ├── language.spec.js
 │   └── login.spec.js
+├── .dockerignore
 ├── .env.example
 ├── .gitignore
-├── .dockerignore
 ├── Dockerfile
 ├── docker-compose.yml
-├── package.json
 ├── package-lock.json
-└── playwright.config.js
+├── package.json
+├── playwright.config.js
+└── README
 ```
 
 ## Test Scenarios
 
-### 1. Authentication
+### TC001 - Login with valid credentials
 
-**Test:** Login with valid credentials.
+**Preconditions:**
+- A valid Wikipedia user account exists.
+- Username and password are configured in environment variables.
 
-Steps:
-1. Open Wikipedia Main Page.
-2. Navigate to the login page.
-3. Enter valid username and password.
-4. Submit the login form.
-5. Verify that the user is successfully authenticated.
-6. Verify that the username is displayed in the header.
+**Steps:**
+1. Open the Wikipedia login page.
+2. Enter a valid username and password.
+3. Click the Login button.
 
-### 2. Interface Language Change
+**Expected result:**
+- The user is successfully authenticated.
+- The user is redirected to the Wikipedia Main Page.
 
-**Test:** An authenticated user can change the Wikipedia interface language.
+### TC002 - Authenticated user can change Wikipedia interface language
 
-Steps:
-1. Open Wikipedia Main Page.
+**Preconditions:**
+- A valid Wikipedia user account exists.
+- Username and password are configured in environment variables.
+
+**Steps:**
+1. Open the Wikipedia login page.
 2. Log in using valid credentials.
-3. Navigate to User Preferences.
+3. Navigate to user Preferences.
 4. Read the currently selected interface language.
 5. Select a different language:
-   - If the current language is Ukrainian, select English.
-   - Otherwise, select Ukrainian.
+   - Ukrainian if the current language is English.
+   - English if the current language is Ukrainian.
 6. Save the preferences.
 7. Verify that the selected language is saved.
-8. Verify that the HTML `lang` attribute matches the selected language.
+8. Verify the HTML `lang` attribute.
+9. Navigate to the Wikipedia Main Page.
+
+**Expected result:**
+- The selected interface language is saved successfully.
+- The HTML `lang` attribute matches the selected language.
+- The Main Page heading is displayed in the selected language:
+  - `Головна сторінка` for Ukrainian.
+  - `Main Page` for English.
+
+The test dynamically selects the language based on the current user preference.
 
 ## Prerequisites
 
 - Node.js (LTS version)
 - npm
-- Docker Desktop (for running tests in a container)
+- Docker Desktop (for local Docker execution)
+- A Wikipedia user account
 
 ## Configuration
 
-1. Clone the repository:
+### 1. Clone the repository
 
 ```bash
-git clone <repository-url>
+git clone <YOUR_GITHUB_REPOSITORY_URL>
 cd nuxGameTestTask
 ```
 
-2. Install dependencies:
+### 2. Install dependencies
 
 ```bash
 npm ci
 ```
 
-3. Install Playwright browsers:
+### 3. Install Playwright browser
 
 ```bash
 npx playwright install chromium
 ```
 
-4. Create a `.env` file in the project root based on `.env.example`:
+### 4. Configure environment variables
+
+Create a `.env` file in the project root based on `.env.example`.
 
 ```env
 WIKI_USERNAME=your_wikipedia_username
 WIKI_PASSWORD=your_wikipedia_password
 ```
 
-**Important:** Credentials are stored in environment variables and are not committed to the repository.
+Use a dedicated Wikipedia test account.
+
+**Important:** Never commit the `.env` file or expose account credentials.
 
 ## Running Tests Locally
 
@@ -105,39 +132,32 @@ Run all tests:
 npm test
 ```
 
-Run tests in headed mode:
-
-```bash
-npm run test:headed
-```
-
 Run a specific test file:
 
 ```bash
+npx playwright test tests/login.spec.js
 npx playwright test tests/language.spec.js
 ```
 
-## Running Tests in Docker
+## Running Tests with Docker
 
-Make sure Docker Desktop is running.
-
-Build the Docker image and run the tests:
+Build and run tests using Docker Compose:
 
 ```bash
 docker compose run --build --rm tests
 ```
 
-The Docker Compose configuration mounts the report and test-results directories to the host machine.
+The test report and test results are saved to the host machine through Docker volume mounts.
 
-## Test Report
+## HTML Report
 
-After test execution, the HTML report is available in:
+Playwright HTML reports are generated in:
 
 ```text
 playwright-report/
 ```
 
-To open the report locally:
+Open the report locally:
 
 ```bash
 npm run report
@@ -149,9 +169,37 @@ Test execution artifacts are stored in:
 test-results/
 ```
 
+## GitHub Actions
+
+The project includes a GitHub Actions workflow:
+
+```text
+.github/workflows/playwright.yml
+```
+
+The workflow:
+
+1. Runs on pushes and pull requests targeting the `master` branch.
+2. Can also be triggered manually using `workflow_dispatch`.
+3. Builds the Docker image.
+4. Runs Playwright tests using Docker Compose.
+5. Uploads the HTML report and test results as GitHub Actions artifacts.
+
+### GitHub Secrets
+
+The following repository secrets must be configured:
+
+- `WIKI_USERNAME`
+- `WIKI_PASSWORD`
+
+Credentials are passed to the Docker container through environment variables and are not stored in the repository.
+
+The HTML report can be downloaded from the **Artifacts** section of a completed GitHub Actions workflow run.
+
 ## Notes
 
-- The tests use a dedicated Wikipedia test account.
-- The interface language is changed dynamically based on the currently selected language.
-- Language preferences are saved to the Wikipedia account and persist after the test execution.
-- Credentials must be provided through environment variables and must never be committed to Git.
+- Tests use a dedicated Wikipedia account.
+- The language test switches between Ukrainian and English dynamically.
+- The selected language is saved in the user's Wikipedia preferences.
+- Credentials are stored in environment variables and excluded from version control.
+- Docker Compose is used to run tests in an isolated container environment.

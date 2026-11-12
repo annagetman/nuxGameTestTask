@@ -3,7 +3,7 @@ import { LoginPage } from "../pages/LoginPage";
 import { HeaderPage } from "../pages/HeaderPage";
 
 test.describe("Authentication", () => {
-  test("Login with valid credentials", async ({ page }) => {
+  test("TC001 - Login with valid credentials", async ({ page }) => {
     const loginPage = new LoginPage(page);
     const headerPage = new HeaderPage(page);
     const username = process.env.WIKI_USERNAME;
