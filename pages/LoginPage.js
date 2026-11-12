@@ -1,6 +1,3 @@
-
-import { expect } from "@playwright/test";
-
 export class LoginPage {
   constructor(page) {
     this.page = page;
@@ -9,7 +6,11 @@ export class LoginPage {
     this.loginButton = page.locator("#wpLoginAttempt");
     this.sessionExpiredMessage = page.getByText(
       "Authentication was successful but your session has expired.",
-      { exact: false }
+      { exact: false },
+    );
+    this.additionalVerificationMessage = page.getByText(
+      "An additional verification step is required. Please submit the form again.",
+      { exact: false },
     );
     this.loggedUserNameSpan = page.locator("#pt-userpage-2 span");
   }
@@ -19,25 +20,8 @@ export class LoginPage {
   }
 
   async clickLogin() {
-    const invalidReturnUrlToken = this.page.getByText(
-      "invalid returnUrlToken",
-      { exact: true },
-    );
-
-    for (let attempt = 0; attempt < 2; attempt++) {
-      await this.page.goto("/wiki/Special:UserLogin");
-
-      if (await invalidReturnUrlToken.isVisible()) {
-        continue;
-      }
-
-      await expect(this.usernameInput).toBeVisible({ timeout: 15000 });
-      return;
-    }
-
-    throw new Error(
-      "Wikipedia rejected the login redirect with invalid returnUrlToken after one retry.",
-    );
+    await this.page.goto("/wiki/Special:UserLogin");
+    await expect(this.usernameInput).toBeVisible();
   }
 
   async login(username, password) {
@@ -47,13 +31,20 @@ export class LoginPage {
 
     const loginSuccess = this.loggedUserNameSpan;
     const loginRecovery = this.sessionExpiredMessage;
+    const additionalVerification = this.additionalVerificationMessage;
 
-    await expect(loginSuccess.or(loginRecovery).first()).toBeVisible({
+    await expect(
+      loginSuccess.or(loginRecovery).or(additionalVerification).first(),
+    ).toBeVisible({
       timeout: 15000,
     });
 
     if (await this.sessionExpiredMessage.isVisible()) {
       await this.clickLogin();
+    }
+
+    if (await this.additionalVerificationMessage.isVisible()) {
+      await this.loginButton.click();
     }
 
     await expect(this.loggedUserNameSpan).toHaveText(username, {
