@@ -1,0 +1,39 @@
+
+name: Wikipedia Playwright Tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build and run tests with Docker Compose
+        env:
+          WIKI_USERNAME: ${{ secrets.WIKI_USERNAME }}
+          WIKI_PASSWORD: ${{ secrets.WIKI_PASSWORD }}
+        run: |
+          trap 'rm -f .env' EXIT
+          printf 'WIKI_USERNAME=%s\nWIKI_PASSWORD=%s\n' "$WIKI_USERNAME" "$WIKI_PASSWORD" > .env
+
+          docker compose build
+          docker compose run --rm tests
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-html-report
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 14
