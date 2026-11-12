@@ -10,10 +10,19 @@ setup("authenticate", async ({ page }) => {
   const loggedInSpan = page.locator("#pt-userpage-2 span");
   const centralLoginButton = page.getByRole("button", { name: "Central login" });
   const sessionExpiredMsg = page.getByText("Authentication was successful but your session has expired");
+  const additionalVerificationMsg = page.getByText("An additional verification step is required. Please submit the form again");
 
-  await expect(loggedInSpan.or(centralLoginButton).or(sessionExpiredMsg).first()).toBeVisible({ timeout: 15000 });
+  await expect(
+    loggedInSpan
+      .or(centralLoginButton)
+      .or(sessionExpiredMsg)
+      .or(additionalVerificationMsg)
+      .first()
+  ).toBeVisible({ timeout: 15000 });
 
-  if (await centralLoginButton.isVisible()) {
+  if (await additionalVerificationMsg.isVisible()) {
+    await page.locator("#wpLoginAttempt").click();
+  } else if (await centralLoginButton.isVisible()) {
     await centralLoginButton.click();
   } else if (await sessionExpiredMsg.isVisible()) {
     const fallbackButton = page.locator("#wpLoginAttempt").or(centralLoginButton);
@@ -23,6 +32,5 @@ setup("authenticate", async ({ page }) => {
   }
 
   await expect(loggedInSpan).toBeVisible({ timeout: 15000 });
-
   await page.context().storageState({ path: "playwright/.auth/user.json" });
 });
