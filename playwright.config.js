@@ -35,11 +35,20 @@ export default defineConfig({
 
   // Browser configuration
   projects: [
+    // 1. Проєкт-залежність для логіну
+    { 
+      name: "setup", 
+      testMatch: /.*\.setup\.js/ 
+    },
+
+    // 2. Основні тести, які запускаються ПІСЛЯ setup і використовують готову сесію
     {
-      name: 'chromium',
-      use: {
-        ...devices['Desktop Chrome'],
+      name: "chromium",
+      use: { 
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json", // Шлях до збереженої сесії
       },
+      dependencies: ["setup"], // Запускати тільки після успішного setup
     },
   ],
 });
