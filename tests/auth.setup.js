@@ -37,6 +37,33 @@ setup("authenticate", async ({ page }) => {
   const loginStartedAt = new Date();
 
   await page.locator("#wpLoginAttempt").click();
+  await page.waitForTimeout(3000);
+
+  const inputs = await page.locator("input").evaluateAll((elements) =>
+    elements.map((input) => ({
+      name: input.name,
+      id: input.id,
+      type: input.type,
+      placeholder: input.placeholder,
+      ariaLabel: input.getAttribute("aria-label"),
+      value: input.value,
+    })),
+  );
+
+  console.log("INPUT ELEMENTS:", JSON.stringify(inputs, null, 2));
+
+  const buttons = await page
+    .locator("button, input[type='submit']")
+    .evaluateAll((elements) =>
+      elements.map((element) => ({
+        text: element.innerText,
+        value: element.value,
+        id: element.id,
+        name: element.name,
+      })),
+    );
+
+  console.log("BUTTON ELEMENTS:", JSON.stringify(buttons, null, 2));
 
   await expect(
     loggedInSpan
