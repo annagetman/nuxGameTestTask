@@ -14,6 +14,10 @@ export async function getWikipediaVerificationCode({ after, timeout = 90000 }) {
     throw new Error("WIKI_EMAIL or WIKI_EMAIL_APP_PASSWORD is missing.");
   }
 
+  if (!(after instanceof Date) || Number.isNaN(after.getTime())) {
+    throw new Error("A valid login start time must be provided.");
+  }
+
   const client = new ImapFlow({
     host: "imap.gmail.com",
     port: 993,
@@ -25,6 +29,13 @@ export async function getWikipediaVerificationCode({ after, timeout = 90000 }) {
     logger: false,
   });
 
+  const diagnostics = {
+    messagesFound: 0,
+    messagesAfterLogin: 0,
+    matchingSubjects: 0,
+    messagesWithText: 0,
+  };
+
   try {
     await client.connect();
 
@@ -34,13 +45,13 @@ export async function getWikipediaVerificationCode({ after, timeout = 90000 }) {
       const startTime = Date.now();
 
       while (Date.now() - startTime < timeout) {
+        // Search by sender first. Validate subject and date below.
         const messageIds = await client.search(
-          {
-            from: EMAIL_FROM,
-            subject: EMAIL_SUBJECT,
-          },
+          { from: EMAIL_FROM },
           { uid: true },
         );
+
+        diagnostics.messagesFound = messageIds?.length ?? 0;
 
         if (messageIds?.length) {
           for (const id of [...messageIds].reverse()) {
@@ -61,9 +72,25 @@ export async function getWikipediaVerificationCode({ after, timeout = 90000 }) {
               continue;
             }
 
+            diagnostics.messagesAfterLogin++;
+
             const parsedEmail = await simpleParser(message.source);
 
-            const match = parsedEmail.text?.match(
+            const subject = parsedEmail.subject?.trim() ?? "";
+
+            if (!subject.toLowerCase().includes(EMAIL_SUBJECT.toLowerCase())) {
+              continue;
+            }
+
+            diagnostics.matchingSubjects++;
+
+            const emailText = parsedEmail.text ?? "";
+
+            if (emailText) {
+              diagnostics.messagesWithText++;
+            }
+
+            const match = emailText.match(
               /Your verification code is:\s*(\d{6})/i,
             );
 
@@ -77,7 +104,8 @@ export async function getWikipediaVerificationCode({ after, timeout = 90000 }) {
       }
 
       throw new Error(
-        "Wikipedia verification email was not received within the timeout.",
+        `Wikipedia verification email was not processed within ${timeout} ms. ` +
+          `Diagnostics: ${JSON.stringify(diagnostics)}`,
       );
     } finally {
       lock.release();

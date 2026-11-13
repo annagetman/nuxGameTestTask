@@ -1,4 +1,3 @@
-
 import { test as setup, expect } from "@playwright/test";
 import { getWikipediaVerificationCode } from "../helpers/gmailClient.js";
 
