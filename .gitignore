@@ -11,8 +11,7 @@ node_modules/
 /playwright-report/
 /test-results/
 /playwright/.cache/
-!playwright/.auth/
-!playwright/.auth/user.json
+/playwright/.auth/
 
 # IDE
 .vscode/
