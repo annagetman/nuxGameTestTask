@@ -26,7 +26,7 @@ setup("authenticate", async ({ page }) => {
     "An additional verification step is required. Please submit the form again",
   );
 
-  const verificationCodeInput = page.locator('input[name="wpEmailAuthCode"]');
+  const verificationCodeInput = page.locator("#mw-emailauth-verification-code");
 
   await page.goto("/wiki/Special:UserLogin");
 
@@ -37,20 +37,6 @@ setup("authenticate", async ({ page }) => {
   const loginStartedAt = new Date();
 
   await page.locator("#wpLoginAttempt").click();
-  await page.waitForTimeout(3000);
-
-  const inputs = await page.locator("input").evaluateAll((elements) =>
-    elements.map((input) => ({
-      name: input.name,
-      id: input.id,
-      type: input.type,
-      placeholder: input.placeholder,
-      ariaLabel: input.getAttribute("aria-label"),
-      value: input.value,
-    })),
-  );
-
-  console.log("INPUT ELEMENTS:", JSON.stringify(inputs, null, 2));
 
   const buttons = await page
     .locator("button, input[type='submit']")
@@ -111,7 +97,7 @@ setup("authenticate", async ({ page }) => {
     });
 
     await verificationCodeInput.fill(verificationCode);
-    await verificationCodeInput.press("Enter");
+    await page.locator("#wpLoginAttempt").click();
   }
 
   // Confirm successful authentication.
