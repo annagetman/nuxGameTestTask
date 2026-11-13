@@ -1,5 +1,5 @@
-
 import { test as setup, expect } from "@playwright/test";
+import { getWikipediaVerificationCode } from "../helpers/gmailClient.js";
 
 setup("authenticate", async ({ page }) => {
   const username = process.env.WIKI_USERNAME;
@@ -26,10 +26,16 @@ setup("authenticate", async ({ page }) => {
     "An additional verification step is required. Please submit the form again",
   );
 
+  const verificationCodeInput = page.locator('input[name="wpEmailAuthCode"]');
+
   await page.goto("/wiki/Special:UserLogin");
 
   await page.locator('input[name="wpName"]').fill(username);
   await page.locator('input[name="wpPassword"]').fill(password);
+
+  // Record the time before starting authentication.
+  const loginStartedAt = new Date();
+
   await page.locator("#wpLoginAttempt").click();
 
   await expect(
@@ -37,8 +43,9 @@ setup("authenticate", async ({ page }) => {
       .or(captcha)
       .or(loginError)
       .or(additionalVerificationMsg)
+      .or(verificationCodeInput)
       .first(),
-  ).toBeVisible({ timeout: 20000 });
+  ).toBeVisible({ timeout: 30000 });
 
   if (await captcha.isVisible()) {
     throw new Error(
@@ -50,11 +57,38 @@ setup("authenticate", async ({ page }) => {
     throw new Error(`Wikipedia login failed: ${await loginError.innerText()}`);
   }
 
+  // Wikipedia may require submitting the login form again.
   if (await additionalVerificationMsg.isVisible()) {
     await page.locator("#wpLoginAttempt").click();
+
+    await expect(
+      loggedInSpan.or(captcha).or(loginError).or(verificationCodeInput).first(),
+    ).toBeVisible({ timeout: 30000 });
   }
 
-  await expect(loggedInSpan).toBeVisible({ timeout: 20000 });
+  if (await captcha.isVisible()) {
+    throw new Error(
+      "Wikipedia displayed a CAPTCHA. Automated authentication cannot continue.",
+    );
+  }
+
+  if (await loginError.isVisible()) {
+    throw new Error(`Wikipedia login failed: ${await loginError.innerText()}`);
+  }
+
+  // Handle email verification if Wikipedia requests it.
+  if (await verificationCodeInput.isVisible()) {
+    const verificationCode = await getWikipediaVerificationCode({
+      after: loginStartedAt,
+      timeout: 90000,
+    });
+
+    await verificationCodeInput.fill(verificationCode);
+    await verificationCodeInput.press("Enter");
+  }
+
+  // Confirm successful authentication.
+  await expect(loggedInSpan).toBeVisible({ timeout: 30000 });
 
   await page.context().storageState({
     path: "playwright/.auth/user.json",

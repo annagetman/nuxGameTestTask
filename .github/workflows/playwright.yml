@@ -20,22 +20,25 @@ jobs:
         env:
           WIKI_USERNAME: ${{ secrets.WIKI_USERNAME }}
           WIKI_PASSWORD: ${{ secrets.WIKI_PASSWORD }}
+          WIKI_EMAIL: ${{ secrets.WIKI_EMAIL }}
+          WIKI_EMAIL_APP_PASSWORD: ${{ secrets.WIKI_EMAIL_APP_PASSWORD }}
         run: |
           trap 'rm -f .env' EXIT
 
-          if [ -z "$WIKI_USERNAME" ]; then
-            echo "WIKI_USERNAME is empty"
-            exit 1
-          fi
+          for secret in WIKI_USERNAME WIKI_PASSWORD WIKI_EMAIL WIKI_EMAIL_APP_PASSWORD; do
+            if [ -z "${!secret}" ]; then
+              echo "$secret is empty"
+              exit 1
+            fi
+          done
 
-          if [ -z "$WIKI_PASSWORD" ]; then
-            echo "WIKI_PASSWORD is empty"
-            exit 1
-          fi
+          echo "All required credentials are provided."
 
-          echo "Both Wikipedia credentials are provided."
-
-          printf 'WIKI_USERNAME=%s\nWIKI_PASSWORD=%s\n' "$WIKI_USERNAME" "$WIKI_PASSWORD" > .env
+          printf 'WIKI_USERNAME=%s\nWIKI_PASSWORD=%s\nWIKI_EMAIL=%s\nWIKI_EMAIL_APP_PASSWORD=%s\n' \
+            "$WIKI_USERNAME" \
+            "$WIKI_PASSWORD" \
+            "$WIKI_EMAIL" \
+            "$WIKI_EMAIL_APP_PASSWORD" > .env
 
           docker compose build
           docker compose run --rm tests
