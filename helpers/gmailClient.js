@@ -1,3 +1,4 @@
+
 import { ImapFlow } from "imapflow";
 import { simpleParser } from "mailparser";
 
@@ -6,7 +7,10 @@ const EMAIL_SUBJECT = "Your Wikipedia login verification code";
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export async function getWikipediaVerificationCode({ after, timeout = 90000 }) {
+export async function getWikipediaVerificationCode({
+  after,
+  timeout = 90000,
+}) {
   const user = process.env.WIKI_EMAIL;
   const password = process.env.WIKI_EMAIL_APP_PASSWORD;
 
@@ -34,6 +38,8 @@ export async function getWikipediaVerificationCode({ after, timeout = 90000 }) {
     messagesAfterLogin: 0,
     matchingSubjects: 0,
     messagesWithText: 0,
+    loginStartedAt: after.toISOString(),
+    latestMessages: [],
   };
 
   try {
@@ -68,17 +74,29 @@ export async function getWikipediaVerificationCode({ after, timeout = 90000 }) {
               continue;
             }
 
-            if (new Date(message.internalDate) < after) {
+            const internalDate = new Date(message.internalDate);
+            const parsedEmail = await simpleParser(message.source);
+
+            // Keep information about the latest emails for diagnostics.
+            diagnostics.latestMessages.push({
+              date: internalDate.toISOString(),
+              subject: parsedEmail.subject ?? "",
+              from: parsedEmail.from?.text ?? "",
+            });
+
+            if (internalDate < after) {
               continue;
             }
 
             diagnostics.messagesAfterLogin++;
 
-            const parsedEmail = await simpleParser(message.source);
-
             const subject = parsedEmail.subject?.trim() ?? "";
 
-            if (!subject.toLowerCase().includes(EMAIL_SUBJECT.toLowerCase())) {
+            if (
+              !subject
+                .toLowerCase()
+                .includes(EMAIL_SUBJECT.toLowerCase())
+            ) {
               continue;
             }
 
@@ -102,6 +120,10 @@ export async function getWikipediaVerificationCode({ after, timeout = 90000 }) {
 
         await delay(5000);
       }
+
+      // Keep only the five latest messages in the error output.
+      diagnostics.latestMessages =
+        diagnostics.latestMessages.slice(-5);
 
       throw new Error(
         `Wikipedia verification email was not processed within ${timeout} ms. ` +
