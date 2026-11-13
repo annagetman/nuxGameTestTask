@@ -1,8 +1,10 @@
 # Wikipedia Playwright Automation
 
-Automated UI tests for Wikipedia using Playwright and JavaScript.
+Automated UI testing of Wikipedia using Playwright and JavaScript.
 
-The project covers user authentication and changing the Wikipedia interface language. Tests are executed locally or inside a Docker container. GitHub Actions is configured to run tests automatically and publish the HTML report as a workflow artifact.
+The project contains an automated test that verifies whether an authenticated Wikipedia user can change their interface language. Authentication is handled by a separate Playwright setup project.
+
+Tests can be executed locally or inside a Docker container. GitHub Actions is configured to build and run the tests using Docker and upload the Playwright HTML report as a workflow artifact.
 
 ## Tech Stack
 
@@ -12,6 +14,8 @@ The project covers user authentication and changing the Wikipedia interface lang
 - Docker Compose
 - GitHub Actions
 - dotenv
+- ImapFlow
+- mailparser
 
 ## Project Structure
 
@@ -20,13 +24,18 @@ nuxGameTestTask/
 ├── .github/
 │   └── workflows/
 │       └── playwright.yml
+├── helpers/
+│   └── gmailClient.js
 ├── pages/
 │   ├── HeaderPage.js
 │   ├── LoginPage.js
 │   └── PreferencesPage.js
+├── scripts/
+│   ├── check-gmail.js
+│   └── check-verification-code.js
 ├── tests/
-│   ├── language.spec.js
-│   └── login.spec.js
+│   ├── auth.setup.js
+│   └── TC001_language.spec.js
 ├── .dockerignore
 ├── .env.example
 ├── .gitignore
@@ -35,53 +44,56 @@ nuxGameTestTask/
 ├── package-lock.json
 ├── package.json
 ├── playwright.config.js
-└── README
+└── README.md
 ```
 
-## Test Scenarios
+## Automated Test Case
 
-### TC001 - Login with valid credentials
-
-**Preconditions:**
-- A valid Wikipedia user account exists.
-- Username and password are configured in environment variables.
-
-**Steps:**
-1. Open the Wikipedia login page.
-2. Enter a valid username and password.
-3. Click the Login button.
-
-**Expected result:**
-- The user is successfully authenticated.
-- The user is redirected to the Wikipedia Main Page.
-
-### TC002 - Authenticated user can change Wikipedia interface language
+### TC001 - Authenticated user can change Wikipedia interface language
 
 **Preconditions:**
+
 - A valid Wikipedia user account exists.
-- Username and password are configured in environment variables.
+- User credentials are configured through environment variables.
+- The user is successfully authenticated by the Playwright setup project.
 
 **Steps:**
-1. Open the Wikipedia login page.
-2. Log in using valid credentials.
-3. Navigate to user Preferences.
-4. Read the currently selected interface language.
-5. Select a different language:
+
+1. Open Wikipedia as an authenticated user.
+2. Navigate to user Preferences.
+3. Read the currently selected interface language.
+4. Select a different language:
    - Ukrainian if the current language is English.
    - English if the current language is Ukrainian.
-6. Save the preferences.
-7. Verify that the selected language is saved.
-8. Verify the HTML `lang` attribute.
-9. Navigate to the Wikipedia Main Page.
+5. Save the preferences.
+6. Verify that the selected language is saved.
+7. Verify that the HTML `lang` attribute matches the selected language.
+8. Navigate to the Wikipedia Main Page.
+9. Verify that the selected language is applied.
+10. Reopen Preferences and verify that the language setting persists.
 
 **Expected result:**
+
 - The selected interface language is saved successfully.
 - The HTML `lang` attribute matches the selected language.
-- The Main Page heading is displayed in the selected language:
-  - `Головна сторінка` for Ukrainian.
-  - `Main Page` for English.
+- The Main Page is displayed in the selected language.
+- The language preference persists after navigating between pages.
 
-The test dynamically selects the language based on the current user preference.
+The test dynamically selects the target language based on the user's current preference.
+
+## Authentication Setup
+
+Authentication is implemented in a separate Playwright setup project (`tests/auth.setup.js`).
+
+The setup:
+
+1. Opens the Wikipedia login page.
+2. Enters the configured username and password.
+3. Handles additional email verification if requested by Wikipedia.
+4. Retrieves the verification code from Gmail using IMAP.
+5. Saves the authenticated browser state to `playwright/.auth/user.json`.
+
+The saved authentication state is reused by the functional test, so the user does not need to log in again during the test.
 
 ## Prerequisites
 
@@ -89,13 +101,14 @@ The test dynamically selects the language based on the current user preference.
 - npm
 - Docker Desktop (for local Docker execution)
 - A Wikipedia user account
+- A Gmail account configured for receiving Wikipedia verification emails (if email verification is required)
 
 ## Configuration
 
 ### 1. Clone the repository
 
 ```bash
-git clone <YOUR_GITHUB_REPOSITORY_URL>
+git clone https://github.com/annagetman/nuxGameTestTask.git
 cd nuxGameTestTask
 ```
 
@@ -115,14 +128,18 @@ npx playwright install chromium
 
 Create a `.env` file in the project root based on `.env.example`.
 
+Configure the following variables:
+
 ```env
 WIKI_USERNAME=your_wikipedia_username
 WIKI_PASSWORD=your_wikipedia_password
+WIKI_EMAIL=your_gmail_address
+WIKI_EMAIL_APP_PASSWORD=your_gmail_app_password
 ```
 
-Use a dedicated Wikipedia test account.
+Use a dedicated Wikipedia test account and a Gmail App Password for IMAP authentication.
 
-**Important:** Never commit the `.env` file or expose account credentials.
+**Important:** Never commit the `.env` file or expose account credentials or Gmail App Passwords.
 
 ## Running Tests Locally
 
@@ -132,12 +149,13 @@ Run all tests:
 npm test
 ```
 
-Run a specific test file:
+Run the functional test only:
 
 ```bash
-npx playwright test tests/login.spec.js
-npx playwright test tests/language.spec.js
+npx playwright test tests/TC001_language.spec.js
 ```
+
+The Playwright setup project runs automatically before the functional test.
 
 ## Running Tests with Docker
 
@@ -181,9 +199,10 @@ The workflow:
 
 1. Runs on pushes and pull requests targeting the `master` branch.
 2. Can also be triggered manually using `workflow_dispatch`.
-3. Builds the Docker image.
-4. Runs Playwright tests using Docker Compose.
-5. Uploads the HTML report and test results as GitHub Actions artifacts.
+3. Validates the required GitHub Secrets.
+4. Builds the Docker image.
+5. Runs Playwright tests using Docker Compose.
+6. Uploads the HTML report and test results as GitHub Actions artifacts.
 
 ### GitHub Secrets
 
@@ -191,6 +210,8 @@ The following repository secrets must be configured:
 
 - `WIKI_USERNAME`
 - `WIKI_PASSWORD`
+- `WIKI_EMAIL`
+- `WIKI_EMAIL_APP_PASSWORD`
 
 Credentials are passed to the Docker container through environment variables and are not stored in the repository.
 
@@ -198,8 +219,9 @@ The HTML report can be downloaded from the **Artifacts** section of a completed 
 
 ## Notes
 
-- Tests use a dedicated Wikipedia account.
-- The language test switches between Ukrainian and English dynamically.
-- The selected language is saved in the user's Wikipedia preferences.
-- Credentials are stored in environment variables and excluded from version control.
+- The project contains one functional automated test case.
+- Authentication is handled separately by the Playwright setup project.
+- The language test switches dynamically between Ukrainian and English.
+- Gmail IMAP integration is used to retrieve Wikipedia email verification codes when required.
+- The authenticated browser state and credentials are excluded from version control.
 - Docker Compose is used to run tests in an isolated container environment.

@@ -1,3 +1,4 @@
+
 import { test, expect } from "@playwright/test";
 import { HeaderPage } from "../pages/HeaderPage";
 import { PreferencesPage } from "../pages/PreferencesPage";
@@ -6,10 +7,12 @@ const LANGUAGES = {
   en: {
     code: "en",
     name: "English",
+    searchPlaceholder: "Search Wikipedia",
   },
   uk: {
     code: "uk",
     name: "Українська",
+    searchPlaceholder: "Пошук у Wikipedia",
   },
 };
 
@@ -50,17 +53,26 @@ test.describe("Wikipedia interface language", () => {
     });
 
     await test.step("Verify the selected language", async () => {
-      await preferencesPage.verifyLanguage(targetLanguage.code);
+      await expect(preferencesPage.languageSelect).toHaveValue(
+        targetLanguage.code,
+      );
     });
 
     await test.step("Verify the language is applied on the main page", async () => {
       await page.goto("/wiki/Main_Page");
-      await preferencesPage.verifyInterfaceLanguage(targetLanguage.code);
+
+      await expect(page.locator("#searchInput")).toHaveAttribute(
+        "placeholder",
+        targetLanguage.searchPlaceholder,
+      );
     });
 
     await test.step("Verify the language setting persists", async () => {
       await headerPage.openPreferences();
-      await preferencesPage.verifyLanguage(targetLanguage.code);
+
+      await expect(preferencesPage.languageSelect).toHaveValue(
+        targetLanguage.code,
+      );
     });
   });
 });

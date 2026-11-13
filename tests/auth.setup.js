@@ -11,10 +11,6 @@ setup("authenticate", async ({ page }) => {
     );
   }
 
-  const captcha = page.locator(
-    'iframe[src*="recaptcha"], iframe[src*="hcaptcha"], .captcha',
-  );
-
   const loggedInSpan = page.locator("#pt-userpage-2 span");
 
   const loginError = page.getByText(
@@ -38,33 +34,13 @@ setup("authenticate", async ({ page }) => {
 
   await page.locator("#wpLoginAttempt").click();
 
-  const buttons = await page
-    .locator("button, input[type='submit']")
-    .evaluateAll((elements) =>
-      elements.map((element) => ({
-        text: element.innerText,
-        value: element.value,
-        id: element.id,
-        name: element.name,
-      })),
-    );
-
-  console.log("BUTTON ELEMENTS:", JSON.stringify(buttons, null, 2));
-
   await expect(
     loggedInSpan
-      .or(captcha)
       .or(loginError)
       .or(additionalVerificationMsg)
       .or(verificationCodeInput)
       .first(),
   ).toBeVisible({ timeout: 30000 });
-
-  if (await captcha.isVisible()) {
-    throw new Error(
-      "Wikipedia displayed a CAPTCHA. Automated authentication cannot continue.",
-    );
-  }
 
   if (await loginError.isVisible()) {
     throw new Error(`Wikipedia login failed: ${await loginError.innerText()}`);
@@ -75,21 +51,15 @@ setup("authenticate", async ({ page }) => {
     await page.locator("#wpLoginAttempt").click();
 
     await expect(
-      loggedInSpan.or(captcha).or(loginError).or(verificationCodeInput).first(),
+      loggedInSpan.or(loginError).or(verificationCodeInput).first(),
     ).toBeVisible({ timeout: 30000 });
-  }
-
-  if (await captcha.isVisible()) {
-    throw new Error(
-      "Wikipedia displayed a CAPTCHA. Automated authentication cannot continue.",
-    );
   }
 
   if (await loginError.isVisible()) {
     throw new Error(`Wikipedia login failed: ${await loginError.innerText()}`);
   }
 
-  // Handle email verification if Wikipedia requests it.
+  // Handle email verification code.
   if (await verificationCodeInput.isVisible()) {
     const verificationCode = await getWikipediaVerificationCode({
       after: loginStartedAt,
