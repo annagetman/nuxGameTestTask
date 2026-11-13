@@ -1,4 +1,3 @@
-
 import { test, expect } from "@playwright/test";
 import { HeaderPage } from "../pages/HeaderPage";
 import { PreferencesPage } from "../pages/PreferencesPage";
@@ -26,6 +25,7 @@ test.describe("Wikipedia interface language", () => {
     await test.step("Open Wikipedia as an authenticated user", async () => {
       await page.goto("/wiki/Main_Page");
       await expect(page).toHaveURL(/Main_Page/);
+      await expect(page.locator("#pt-userpage-2")).toBeVisible();
     });
 
     await test.step("Open Preferences and check the current language", async () => {
@@ -37,13 +37,11 @@ test.describe("Wikipedia interface language", () => {
       const currentLanguage = await preferencesPage.getCurrentLanguage();
 
       targetLanguage =
-        currentLanguage === LANGUAGES.uk.code
-          ? LANGUAGES.en
-          : LANGUAGES.uk;
+        currentLanguage === LANGUAGES.uk.code ? LANGUAGES.en : LANGUAGES.uk;
 
       await preferencesPage.selectLanguage(
         targetLanguage.name,
-        targetLanguage.code
+        targetLanguage.code,
       );
     });
 

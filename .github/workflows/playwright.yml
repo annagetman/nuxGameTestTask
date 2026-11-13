@@ -22,6 +22,19 @@ jobs:
           WIKI_PASSWORD: ${{ secrets.WIKI_PASSWORD }}
         run: |
           trap 'rm -f .env' EXIT
+
+          if [ -z "$WIKI_USERNAME" ]; then
+            echo "WIKI_USERNAME is empty"
+            exit 1
+          fi
+
+          if [ -z "$WIKI_PASSWORD" ]; then
+            echo "WIKI_PASSWORD is empty"
+            exit 1
+          fi
+
+          echo "Both Wikipedia credentials are provided."
+
           printf 'WIKI_USERNAME=%s\nWIKI_PASSWORD=%s\n' "$WIKI_USERNAME" "$WIKI_PASSWORD" > .env
 
           docker compose build
