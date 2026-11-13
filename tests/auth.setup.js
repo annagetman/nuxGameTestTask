@@ -1,3 +1,4 @@
+
 import { test as setup, expect } from "@playwright/test";
 
 setup("authenticate", async ({ page }) => {
@@ -10,12 +11,6 @@ setup("authenticate", async ({ page }) => {
     );
   }
 
-  await page.goto("/wiki/Special:UserLogin");
-
-  await page.locator('input[name="wpName"]').fill(username);
-  await page.locator('input[name="wpPassword"]').fill(password);
-  await page.locator("#wpLoginAttempt").click();
-
   const captcha = page.locator(
     'iframe[src*="recaptcha"], iframe[src*="hcaptcha"], .captcha',
   );
@@ -27,9 +22,23 @@ setup("authenticate", async ({ page }) => {
     { exact: true },
   );
 
-  await expect(loggedInSpan.or(captcha).or(loginError).first()).toBeVisible({
-    timeout: 20000,
-  });
+  const additionalVerificationMsg = page.getByText(
+    "An additional verification step is required. Please submit the form again",
+  );
+
+  await page.goto("/wiki/Special:UserLogin");
+
+  await page.locator('input[name="wpName"]').fill(username);
+  await page.locator('input[name="wpPassword"]').fill(password);
+  await page.locator("#wpLoginAttempt").click();
+
+  await expect(
+    loggedInSpan
+      .or(captcha)
+      .or(loginError)
+      .or(additionalVerificationMsg)
+      .first(),
+  ).toBeVisible({ timeout: 20000 });
 
   if (await captcha.isVisible()) {
     throw new Error(
@@ -41,7 +50,11 @@ setup("authenticate", async ({ page }) => {
     throw new Error(`Wikipedia login failed: ${await loginError.innerText()}`);
   }
 
-  await expect(loggedInSpan).toBeVisible();
+  if (await additionalVerificationMsg.isVisible()) {
+    await page.locator("#wpLoginAttempt").click();
+  }
+
+  await expect(loggedInSpan).toBeVisible({ timeout: 20000 });
 
   await page.context().storageState({
     path: "playwright/.auth/user.json",
